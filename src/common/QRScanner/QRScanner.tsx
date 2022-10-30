@@ -61,8 +61,10 @@ class QRScanner extends Component<QRScannerProps, QRScannerState> {
     try {
       let stream = await navigator.mediaDevices.getUserMedia(this.constraints);
       this.handleSuccess(stream);
-    } catch (err) {
-      this.handleError(err);
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        this.handleError(err);
+      }
     }
   }
 

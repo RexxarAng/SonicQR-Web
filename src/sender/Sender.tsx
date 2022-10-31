@@ -13,6 +13,7 @@ const BEEP_BACK_CORRELATE_MIN = 1300;
 const BEEP_BACK_CORRELATE_MAX = 1350;
 // const BEEP_BACK_CORRELATE_MIN = 3650;
 // const BEEP_BACK_CORRELATE_MAX = 3750;
+// const TICK = 500;
 const TICK = 10;
 const BEEP_COOLDOWN_INTERVAL = 10;
 const EACH_PACKET_SIZE = 800;
@@ -347,11 +348,15 @@ class Sender extends React.Component<SenderProps, SenderState> {
 
   private constructHeaderPacket(): string {
     const file = this.state.selectedFile!;
-    return `@${this.state.dataPackets.length}|${file.name}|${file.type}${file.size}`;
+    return `@${this.state.dataPackets.length}|${file.name}|${file.type}|${file.size}`;
   }
 
   private goToNextDataPacket() {
     if (!this.state.data) return; // do nothing if data is empty
+    
+    if (!PLAY_MODE && this.state.currentPacketNumber >= this.state.dataPackets.length-1) return;
+
+    // only loop for mode without audio acknowledge
     let packetIndex = (this.state.currentPacketNumber + 1) % this.state.totalNumberOfPackets;
     this.setState({
       currentPacketNumber: packetIndex,
@@ -361,7 +366,10 @@ class Sender extends React.Component<SenderProps, SenderState> {
 
   private goToPreviousDataPacket() {
     if (!this.state.data) return; // do nothing if data is empty
-    let packetIndex = (this.state.currentPacketNumber - 1) % this.state.totalNumberOfPackets;
+
+    if (this.state.currentPacketNumber == 0) return;
+
+    let packetIndex = (this.state.currentPacketNumber - 1);
     this.setState({
       currentPacketNumber: packetIndex,
       currentPacketData: this.retrieveCurrentPacket(this.state.data, this.state.eachPacketSize, packetIndex),
@@ -386,7 +394,8 @@ class Sender extends React.Component<SenderProps, SenderState> {
   }
 
   private retrieveCurrentPacket(data:string, packetSize: number, currentPacketNumber: number) {
-    return (currentPacketNumber) + "|" + data.substring(currentPacketNumber * packetSize, currentPacketNumber * packetSize + packetSize);
+    return (currentPacketNumber) + "|" + this.state.dataPackets[currentPacketNumber].data;
+    //return (currentPacketNumber) + "|" + data.substring(currentPacketNumber * packetSize, currentPacketNumber * packetSize + packetSize);
   }
 
   private convertFrameToColor(frame: number) {

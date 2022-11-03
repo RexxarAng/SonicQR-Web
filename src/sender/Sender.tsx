@@ -1,23 +1,34 @@
 import React, { ChangeEvent } from 'react';
+import { v4 as uuid } from 'uuid';
 import './Sender.css';
 
 import { Button, Container, Box, Slider, Typography } from '@material-ui/core';
 import QRCode from 'qrcode.react';
+
+import { SonicQrDataEncoder } from '../utils/DataEncoder';
 // import internal from 'stream';
 
 const BEEP_FORWARD_CORRELATE_MIN = 360;
 const BEEP_FORWARD_CORRELATE_MAX = 400;
-// const BEEP_CORRELATE_MIN = 1300;
-// const BEEP_CORRELATE_MAX = 1350;
 const BEEP_BACK_CORRELATE_MIN = 1300;
 const BEEP_BACK_CORRELATE_MAX = 1350;
-// const BEEP_BACK_CORRELATE_MIN = 3650;
-// const BEEP_BACK_CORRELATE_MAX = 3750;
-// const TICK = 500;
-const TICK = 10;
-const BEEP_COOLDOWN_INTERVAL = 10;
-const EACH_PACKET_SIZE = 800;
+
+// const PLAY_MODE = true;
+// const TICK = 100;
+// const BEEP_COOLDOWN_INTERVAL = 0;
+// const EACH_PACKET_SIZE = 3000;
+
 const PLAY_MODE = false;
+const TICK = 5;
+const BEEP_COOLDOWN_INTERVAL = 10;
+const EACH_PACKET_SIZE = 1600;
+// const EACH_PACKET_SIZE = 4250;
+const RECEIVER_AUDIO_COOLDOWN = 70;
+
+const VARIABLE_COOLDOWN_INTERVAL = false;
+const CAN_REDRAW = false;
+const REDRAW_INTERVAL = 100;
+
 
 enum SenderTransferState {
   SENDING_HEADER_PACKET,
@@ -59,7 +70,9 @@ class Sender extends React.Component<SenderProps, SenderState> {
   source: MediaStreamAudioSourceNode | undefined;
   beepDetectionAudioWorkletProcessor: AudioWorkletNode | undefined;
   isSourceConnected: boolean = false;
+  beepCoolDownRate: number = BEEP_COOLDOWN_INTERVAL;
   beepCoolDownCounter: number = 0;
+  redrawCounter: number = REDRAW_INTERVAL;
 
   constructor(props: SenderProps) {
     super(props);
@@ -72,10 +85,19 @@ class Sender extends React.Component<SenderProps, SenderState> {
       transferState: SenderTransferState.PAUSED,
     }
 
-    setInterval(() => this.tick(), TICK);
+    // setInterval(() => this.tick(), TICK);
+    this.tickLoop();
+
 
     this.sendHeader = this.sendHeader.bind(this);
     this.stop = this.stop.bind(this);
+  }
+
+  tickLoop = () => {
+    setTimeout(() => {
+      this.tick();
+      this.tickLoop();
+    }, TICK);
   }
 
   onFileChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -97,8 +119,19 @@ class Sender extends React.Component<SenderProps, SenderState> {
 
         this.sendHeader();
       }
+
+      if (event?.target?.result instanceof ArrayBuffer) {
+        const dataEncoder = new SonicQrDataEncoder();
+        const encodedData = dataEncoder.encode(new Uint8Array(event.target.result));
+        console.log(encodedData.length);
+        this.setState({
+          data: encodedData
+        });
+        this.sendHeader();
+      }
     });
-    reader.readAsDataURL(event.target.files[0]);
+    reader.readAsArrayBuffer(event.target.files[0]);
+    // reader.readAsDataURL(event.target.files[0]);
   };
 
   connectSource() {
@@ -106,14 +139,14 @@ class Sender extends React.Component<SenderProps, SenderState> {
     
     this.source.connect(this.analyser);
     this.isSourceConnected = true;
-    console.log('connect source');
+    // console.log('connect source');
   }
   disconnectSource() {
     if (!this.source || !this.analyser) return;
     
     this.source.disconnect(this.analyser);
     this.isSourceConnected = false;
-    console.log('disconnect source');
+    // console.log('disconnect source');
   }
 
   async loadWorkletModule(source: AudioNode) {
@@ -221,16 +254,32 @@ class Sender extends React.Component<SenderProps, SenderState> {
           switch (beepSound) {
             case BeepEnum.BEEP_FORWARD:
               this.goToNextDataPacket();
-              this.beepCoolDownCounter = BEEP_COOLDOWN_INTERVAL;
+              if (VARIABLE_COOLDOWN_INTERVAL && this.beepCoolDownRate > 2) {
+                this.beepCoolDownRate -= 1;
+              }
+              this.beepCoolDownCounter = this.beepCoolDownRate;
               this.disconnectSource();
               break;
             case BeepEnum.BEEP_BACKWARD:
               this.goToPreviousDataPacket();
-              this.beepCoolDownCounter = BEEP_COOLDOWN_INTERVAL;
+              if (VARIABLE_COOLDOWN_INTERVAL) {
+                this.beepCoolDownRate += 4;
+              }
+              this.beepCoolDownCounter = this.beepCoolDownRate;
+              
               this.disconnectSource();
               break;
+            default:
+              if (CAN_REDRAW && this.redrawCounter <= 0) {
+                this.goToCurrentDataPacket();
+              }
           }
         }
+
+        this.redrawCounter --;
+
+        console.log('beepCoolDownRate :' + this.beepCoolDownRate)
+
         // else if (this.checkHasBeep()) {
         //   console.log('detected beep');
         //   this.goToNextDataPacket();
@@ -348,7 +397,33 @@ class Sender extends React.Component<SenderProps, SenderState> {
 
   private constructHeaderPacket(): string {
     const file = this.state.selectedFile!;
-    return `@${this.state.dataPackets.length}|${file.name}|${file.type}|${file.size}`;
+    return `@${this.state.dataPackets.length}|${file.name}|${file.type}|${file.size}|checksumtodo|${RECEIVER_AUDIO_COOLDOWN}`;
+  }
+
+  private goToCurrentDataPacket() {
+    if (!this.state.data) return; // do nothing if data is empty
+
+    let packetIndex = this.state.currentPacketNumber;
+    this.setState({
+      currentPacketNumber: packetIndex,
+      currentPacketData: this.retrieveCurrentPacket(this.state.data, this.state.eachPacketSize, packetIndex),
+    });
+
+    this.redrawCounter = REDRAW_INTERVAL;
+  }
+
+  private goToPreviousDataPacket() {
+    if (!this.state.data) return; // do nothing if data is empty
+
+    if (this.state.currentPacketNumber == 0) return;
+
+    let packetIndex = (this.state.currentPacketNumber - 1);
+    this.setState({
+      currentPacketNumber: packetIndex,
+      currentPacketData: this.retrieveCurrentPacket(this.state.data, this.state.eachPacketSize, packetIndex),
+    });
+
+    this.redrawCounter = REDRAW_INTERVAL;
   }
 
   private goToNextDataPacket() {
@@ -362,18 +437,8 @@ class Sender extends React.Component<SenderProps, SenderState> {
       currentPacketNumber: packetIndex,
       currentPacketData: this.retrieveCurrentPacket(this.state.data, this.state.eachPacketSize, packetIndex),
     });
-  }
 
-  private goToPreviousDataPacket() {
-    if (!this.state.data) return; // do nothing if data is empty
-
-    if (this.state.currentPacketNumber == 0) return;
-
-    let packetIndex = (this.state.currentPacketNumber - 1);
-    this.setState({
-      currentPacketNumber: packetIndex,
-      currentPacketData: this.retrieveCurrentPacket(this.state.data, this.state.eachPacketSize, packetIndex),
-    });
+    this.redrawCounter = REDRAW_INTERVAL;
   }
 
   private computeDataPackets() {
@@ -384,9 +449,15 @@ class Sender extends React.Component<SenderProps, SenderState> {
     let packets: Array<QRDataPacket> = [];
     let totalNumberOfPackets = Math.ceil(data.length / EACH_PACKET_SIZE);
     for (let i = 0; i < totalNumberOfPackets; i++) {
+      let curData = data.substring(i * EACH_PACKET_SIZE, i * EACH_PACKET_SIZE + EACH_PACKET_SIZE);
+      // if (curData.length < EACH_PACKET_SIZE) {
+      //   curData += '|';
+      //   curData = curData.padEnd(EACH_PACKET_SIZE-curData.length, '0');
+      // }
+      
       packets.push({
         id: i.toString(),
-        data: data.substring(i * EACH_PACKET_SIZE, i * EACH_PACKET_SIZE + EACH_PACKET_SIZE),
+        data: curData,
       });
     }
     
@@ -394,7 +465,8 @@ class Sender extends React.Component<SenderProps, SenderState> {
   }
 
   private retrieveCurrentPacket(data:string, packetSize: number, currentPacketNumber: number) {
-    return (currentPacketNumber) + "|" + this.state.dataPackets[currentPacketNumber].data;
+    return (currentPacketNumber) + ":" + this.state.dataPackets[currentPacketNumber].data;
+    // return (currentPacketNumber) + "|" + this.state.dataPackets[currentPacketNumber].data + '|' + uuid().replace(/-/g, '');
     //return (currentPacketNumber) + "|" + data.substring(currentPacketNumber * packetSize, currentPacketNumber * packetSize + packetSize);
   }
 
@@ -414,7 +486,7 @@ class Sender extends React.Component<SenderProps, SenderState> {
       <input type="file" onChange={this.onFileChange} />
       
       {this.state ? <Box>
-        <Box alignItems="center" style={{backgroundColor: 'white', padding: 10, width: "60vmin", height: "60vmin"}}>
+        <Box alignItems="center" className='animate-left-right' style={{backgroundColor: 'white', padding: 10, width: "60vmin", height: "60vmin"}}>
           { this.state.currentPacketData != null ? <QRCode value={this.state.currentPacketData} renderAs='svg' level="L" bgColor="#00000000" style={{width: "55vmin", height: "55vmin"}} /> : null }
         </Box>
         

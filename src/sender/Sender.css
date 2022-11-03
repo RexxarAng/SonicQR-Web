@@ -1,3 +1,13 @@
 .filter-green {
     filter: invert(42%) sepia(93%) saturate(1352%) hue-rotate(87deg) brightness(119%) contrast(119%);
 }
+/* 
+.animate-left-right {
+    animation: run ease-in-out 0.5s infinite;
+}   
+  
+@keyframes run {
+    0% { margin-left: 0px; }
+    50% { margin-left: 5px; }
+    100% { margin-left: 0px; }
+} */

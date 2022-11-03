@@ -33,7 +33,7 @@ export default function SimpleBottomNavigation() {
     >
       <BottomNavigationAction label="Home" value='/' icon={<HomeIcon />} />
       <BottomNavigationAction label="Send" value='/send' icon={<PublishIcon />} />
-      <BottomNavigationAction label="Receive" value='/receive' icon={<GetAppIcon />} />
+      {/* <BottomNavigationAction label="Receive" value='/receive' icon={<GetAppIcon />} /> */}
     </BottomNavigation>
   );
 }

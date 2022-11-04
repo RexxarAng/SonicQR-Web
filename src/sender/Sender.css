@@ -11,3 +11,25 @@
     50% { margin-left: 5px; }
     100% { margin-left: 0px; }
 } */
+
+h4 {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: #fff;
+    margin: 0;
+    padding: 0;
+    margin-bottom: 0.2rem;
+}
+
+.qrcode-ec-label {
+    display: inline-block;
+    box-sizing: border-box;
+    width: 50px;
+    text-align: center;
+    padding: 10px 10px;
+    color: #666;
+}
+
+.selected {
+    color: #EEE;
+}

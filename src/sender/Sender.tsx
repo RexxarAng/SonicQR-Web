@@ -1,5 +1,4 @@
 import React, { ChangeEvent } from 'react';
-import { v4 as uuid } from 'uuid';
 import './Sender.css';
 
 import { Button, Container, Box, Slider, Typography } from '@material-ui/core';
@@ -21,6 +20,7 @@ const BEEP_BACK_CORRELATE_MAX = 1350;
 const PLAY_MODE = false;
 const TICK = 5;
 const BEEP_COOLDOWN_INTERVAL = 10;
+// const EACH_PACKET_SIZE = 2800;
 const EACH_PACKET_SIZE = 1600;
 // const EACH_PACKET_SIZE = 4250;
 const RECEIVER_AUDIO_COOLDOWN = 70;
@@ -50,6 +50,7 @@ type QRDataPacket = {
 type SenderState = {
   eachPacketSize: number,
   data?: string | null,
+  digest?: string | null,
   dataPackets: Array<QRDataPacket>,
 
   currentPacketNumber: number,
@@ -112,7 +113,7 @@ class Sender extends React.Component<SenderProps, SenderState> {
     // TODO : move this code to a lib function
     console.log(event.target.files[0]);
     const reader = new FileReader();
-    reader.addEventListener('load', (event) => {
+    reader.addEventListener('load', async (event) => {
       if (typeof event?.target?.result == 'string') {
         this.setState({ data: event?.target?.result });
         console.log(event?.target?.result);
@@ -123,16 +124,31 @@ class Sender extends React.Component<SenderProps, SenderState> {
       if (event?.target?.result instanceof ArrayBuffer) {
         const dataEncoder = new SonicQrDataEncoder();
         const encodedData = dataEncoder.encode(new Uint8Array(event.target.result));
+
         console.log(encodedData.length);
         this.setState({
-          data: encodedData
+          data: encodedData,
+          digest: await this.hashAsync(event.target.result)
         });
+
         this.sendHeader();
       }
     });
     reader.readAsArrayBuffer(event.target.files[0]);
     // reader.readAsDataURL(event.target.files[0]);
   };
+
+  hashAsync(data: ArrayBuffer | string) {
+    let encodedString: ArrayBuffer = (data instanceof ArrayBuffer) ? data : new TextEncoder().encode(data);
+
+    return crypto.subtle.digest('SHA-256', encodedString).then((hashBuffer) => {
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      const hashHex = hashArray
+        .map((bytes) => bytes.toString(16).padStart(2, '0'))
+        .join('');
+      return hashHex;
+    });
+  }
 
   connectSource() {
     if (!this.source || !this.analyser) return;
@@ -397,7 +413,7 @@ class Sender extends React.Component<SenderProps, SenderState> {
 
   private constructHeaderPacket(): string {
     const file = this.state.selectedFile!;
-    return `@${this.state.dataPackets.length}|${file.name}|${file.type}|${file.size}|checksumtodo|${RECEIVER_AUDIO_COOLDOWN}`;
+    return `!${this.state.dataPackets.length}|${file.name}|${file.type}|${file.size}|Base45|${this.state.digest}|${RECEIVER_AUDIO_COOLDOWN}`;
   }
 
   private goToCurrentDataPacket() {

@@ -631,8 +631,17 @@ class Sender extends React.Component<SenderProps, SenderState> {
           valueLabelDisplay="auto"
           style={{width: "100%"}}
         />
-        <Box alignItems="center" className='animate-left-right' style={{backgroundColor: 'white', padding: 10, aspectRatio: '1', width: "100%"}}>
-          { this.state.currentPacketData != null ? <QRCode value={this.state.currentPacketData} renderAs='svg' level="L" bgColor="#FFFFFFFF" style={{width: "100%", height: "100%"}} /> : null }
+        <Box alignItems="center" className='animate-left-right' style={{
+            padding: 10,
+            marginBottom: 5,
+            aspectRatio: '1',
+            width: "100%",
+            backgroundColor: (this.state.currentPacketData != null) ? 'white' : '#555', 
+          }}>
+          { this.state.currentPacketData != null
+          ? <QRCode value={this.state.currentPacketData} renderAs='svg' level="L" bgColor="#FFFFFFFF" style={{width: "100%", height: "100%"}} />
+          : <div>Please upload file</div>
+          }
         </Box>
       </Box>: null}
       <Button variant="contained" color="primary" onClick={this.sendHeader}>Header</Button>

@@ -562,16 +562,19 @@ class Sender extends React.Component<SenderProps, SenderState> {
   }
 
   onChangeSelectedEncoding = (event: React.MouseEvent<HTMLElement, MouseEvent>, value: any) => {
+    if (value == null) return;
     this.setState({ selectedEncoding: value });
     setTimeout(() => {this.calculateDataFrameSize()}, 100);
   }
   
   onChangeSelectedQRCodeVersion = (event: React.MouseEvent<HTMLElement, MouseEvent>, value: any) => {
+    if (value == null) return;
     this.setState({ selectedQRCodeVersion: value });
     setTimeout(() => {this.calculateDataFrameSize()}, 100);
   }
 
   onChangeSelectedQRCodeErrorCorrectionLevel = (event: React.MouseEvent<HTMLElement, MouseEvent>, value: any) => {
+    if (value == null) return;
     this.setState({ selectedQRCodeErrorCorrectionLevel: value });
     setTimeout(() => {this.calculateDataFrameSize()}, 100);
   }

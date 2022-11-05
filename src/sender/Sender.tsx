@@ -112,7 +112,6 @@ class Sender extends React.Component<SenderProps, SenderState> {
   audioContext: AudioContext | undefined;
   analyser: AnalyserNode | undefined;
   source: MediaStreamAudioSourceNode | undefined;
-  beepDetectionAudioWorkletProcessor: AudioWorkletNode | undefined;
   isSourceConnected: boolean = false;
   beepCoolDownRate: number = BEEP_COOLDOWN_INTERVAL;
   beepCoolDownCounter: number = 0;
@@ -134,9 +133,7 @@ class Sender extends React.Component<SenderProps, SenderState> {
       selectedQRCodeErrorCorrectionLevel: 'L',
     }
 
-    // setInterval(() => this.tick(), TICK);
     this.tickLoop();
-
 
     this.sendHeader = this.sendHeader.bind(this);
     this.stop = this.stop.bind(this);
@@ -205,8 +202,7 @@ class Sender extends React.Component<SenderProps, SenderState> {
       );
       console.log('connect source (at the start)');
       source.connect(beepDetectionNode);
-      // this.beepDetectionAudioWorkletProcessor = new AudioWorkletNode(this.audioContext, 'beep-detection-audio-worklet-processor');
-      // beepDetectionNode.connect(source);
+
       console.log(source);
       console.log(beepDetectionNode);
     } catch(e) {
@@ -247,11 +243,10 @@ class Sender extends React.Component<SenderProps, SenderState> {
 
             // Initialize the SourceNode
             this.source = this.audioContext.createMediaStreamSource(stream);
+
             // Connect the source node to the analyzer
             console.log('connect source (at the start)');
-            // this.source.connect(this.analyser);
             this.connectSource();
-            // this.loadWorkletModule(source)
           }
         )
         .catch(function(err) {
@@ -494,8 +489,6 @@ class Sender extends React.Component<SenderProps, SenderState> {
 
   private retrieveCurrentPacket(data:string, packetSize: number, currentPacketNumber: number) {
     return (currentPacketNumber) + ":" + this.state.dataPackets[currentPacketNumber].data;
-    // return (currentPacketNumber) + "|" + this.state.dataPackets[currentPacketNumber].data + '|' + uuid().replace(/-/g, '');
-    //return (currentPacketNumber) + "|" + data.substring(currentPacketNumber * packetSize, currentPacketNumber * packetSize + packetSize);
   }
 
   calculateDataFrameSize() {
@@ -637,6 +630,7 @@ class Sender extends React.Component<SenderProps, SenderState> {
       <Button variant="contained" color="secondary" onClick={this.stop}>Stop</Button>:
       <Button variant="contained" color="primary" onClick={this.sendData}>Start</Button>
       }
+
       <FormControlLabel
         style={{marginLeft: '10px'}}
         control={
@@ -645,14 +639,6 @@ class Sender extends React.Component<SenderProps, SenderState> {
           onChange={this.onChangeIsAudioAckMode}
           name="Audio Ack Mode"/>}
         label="Require Audio Acknowledge" />
-      {/* <ToggleButtonGroup size="small" value={this.state.tick} exclusive onChange={this.onChangeTick} style={{marginTop: '10px'}}>
-        <ToggleButton value={5}> 5 </ToggleButton>
-        <ToggleButton value={10}> 10 </ToggleButton>
-        <ToggleButton value={15}> 15 </ToggleButton>
-        <ToggleButton value={20}> 20 </ToggleButton>
-        <ToggleButton value={25}> 25 </ToggleButton>
-        <ToggleButton value={30}> 30 </ToggleButton>
-      </ToggleButtonGroup> */}
 
       <Typography id="discrete-slider" gutterBottom>
         Tick {this.state.tick} ms

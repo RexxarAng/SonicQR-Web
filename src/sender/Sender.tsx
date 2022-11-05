@@ -6,7 +6,7 @@ import ToggleButton from '@material-ui/lab/ToggleButton';
 import ToggleButtonGroup from '@material-ui/lab/ToggleButtonGroup';
 import QRCode from 'qrcode.react';
 
-import { SonicQrDataEncoder } from '../utils/DataEncoder';
+import { DataEncodingType, SonicQrDataEncoder } from '../utils/DataEncoder';
 
 const BEEP_FORWARD_CORRELATE_MIN = 360;
 const BEEP_FORWARD_CORRELATE_MAX = 400;
@@ -100,7 +100,7 @@ type SenderState = {
 
   tick: number,
   isAudioAckMode: boolean,
-  selectedEncoding: string,
+  selectedEncoding: DataEncodingType,
   selectedQRCodeVersion: number,
   selectedQRCodeErrorCorrectionLevel: string,
 }
@@ -129,7 +129,7 @@ class Sender extends React.Component<SenderProps, SenderState> {
       transferState: SenderTransferState.PAUSED,
       tick: 5,
       isAudioAckMode: true,
-      selectedEncoding: 'Base45',
+      selectedEncoding: DataEncodingType.base45,
       selectedQRCodeVersion: 20,
       selectedQRCodeErrorCorrectionLevel: 'L',
     }
@@ -156,51 +156,23 @@ class Sender extends React.Component<SenderProps, SenderState> {
       event.target == null ||
       event.target.files == null ||
       event.target.files.length <= 0) return;
+
     this.setState({ selectedFile: event.target.files[0] });
 
-    // TODO : move this code to a lib function
-    console.log(event.target.files[0]);
-    const reader = new FileReader();
-    reader.addEventListener('load', async (event) => {
-      if (typeof event?.target?.result == 'string') {
-        this.setState({ data: event?.target?.result });
-        console.log(event?.target?.result);
-
-        this.sendHeader();
-      }
-
-      if (event?.target?.result instanceof ArrayBuffer) {
-        const dataEncoder = new SonicQrDataEncoder();
-        const encodedData = dataEncoder.encode(new Uint8Array(event.target.result));
-
-        console.log(encodedData.length);
-        this.setState({
-          data: encodedData,
-          digest: await this.hashAsync(event.target.result)
-        });
-
-        this.sendHeader();
-      }
-    });
-
-    if (this.state.selectedEncoding == 'Base45') {
-      reader.readAsArrayBuffer(event.target.files[0]);
-    }
-    else {
-      reader.readAsDataURL(event.target.files[0]);
-    }
+    setTimeout(() => {this.decodeFile()}, 100);
   };
 
-  hashAsync(data: ArrayBuffer | string) {
-    let encodedString: ArrayBuffer = (data instanceof ArrayBuffer) ? data : new TextEncoder().encode(data);
+  decodeFile = async () => {
+    if (this.state.selectedFile == null) return;
+    const dataEncoder = new SonicQrDataEncoder();
+    const encodedData = await dataEncoder.encode(this.state.selectedFile, this.state.selectedEncoding);
 
-    return crypto.subtle.digest('SHA-256', encodedString).then((hashBuffer) => {
-      const hashArray = Array.from(new Uint8Array(hashBuffer));
-      const hashHex = hashArray
-        .map((bytes) => bytes.toString(16).padStart(2, '0'))
-        .join('');
-      return hashHex;
+    this.setState({ 
+      data: encodedData.encodedData,
+      digest: encodedData.digest,
     });
+
+    this.sendHeader();
   }
 
   connectSource() {
@@ -531,25 +503,25 @@ class Sender extends React.Component<SenderProps, SenderState> {
     let packetSize = 100;
     switch(this.state.selectedQRCodeErrorCorrectionLevel) {
       case 'L': {
-        packetSize = this.state.selectedEncoding == "Base45"
+        packetSize = this.state.selectedEncoding == DataEncodingType.base45
           ? QRCodeVersions[this.state.selectedQRCodeVersion].alphaNumeric.L
           : QRCodeVersions[this.state.selectedQRCodeVersion].binary.L
         break;
       }
       case 'M': {
-        packetSize = this.state.selectedEncoding == "Base45"
+        packetSize = this.state.selectedEncoding == DataEncodingType.base45
           ? QRCodeVersions[this.state.selectedQRCodeVersion].alphaNumeric.M
           : QRCodeVersions[this.state.selectedQRCodeVersion].binary.M
         break;
       }
       case 'Q': {
-        packetSize = this.state.selectedEncoding == "Base45"
+        packetSize = this.state.selectedEncoding == DataEncodingType.base45
           ? QRCodeVersions[this.state.selectedQRCodeVersion].alphaNumeric.Q
           : QRCodeVersions[this.state.selectedQRCodeVersion].binary.Q
         break;
       }
       case 'H': {
-        packetSize = this.state.selectedEncoding == "Base45"
+        packetSize = this.state.selectedEncoding == DataEncodingType.base45
           ? QRCodeVersions[this.state.selectedQRCodeVersion].alphaNumeric.H
           : QRCodeVersions[this.state.selectedQRCodeVersion].binary.H
         break;
@@ -564,19 +536,20 @@ class Sender extends React.Component<SenderProps, SenderState> {
   onChangeSelectedEncoding = (event: React.MouseEvent<HTMLElement, MouseEvent>, value: any) => {
     if (value == null) return;
     this.setState({ selectedEncoding: value });
-    setTimeout(() => {this.calculateDataFrameSize()}, 100);
+    setTimeout(() => this.calculateDataFrameSize(), 100);
+    setTimeout(() => this.decodeFile(), 150);
   }
   
   onChangeSelectedQRCodeVersion = (event: React.MouseEvent<HTMLElement, MouseEvent>, value: any) => {
     if (value == null) return;
     this.setState({ selectedQRCodeVersion: value });
-    setTimeout(() => {this.calculateDataFrameSize()}, 100);
+    setTimeout(() => this.calculateDataFrameSize(), 100);
   }
 
   onChangeSelectedQRCodeErrorCorrectionLevel = (event: React.MouseEvent<HTMLElement, MouseEvent>, value: any) => {
     if (value == null) return;
     this.setState({ selectedQRCodeErrorCorrectionLevel: value });
-    setTimeout(() => {this.calculateDataFrameSize()}, 100);
+    setTimeout(() => this.calculateDataFrameSize(), 100);
   }
 
   onChangeIsAudioAckMode = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -584,9 +557,8 @@ class Sender extends React.Component<SenderProps, SenderState> {
   }
 
   onChangeTick = (event: React.ChangeEvent<{}>, value: number | number[]) => {
-    if (typeof value === 'number') {
-      this.setState({ tick: value });
-    }
+    if (typeof value !== 'number') return;
+    this.setState({ tick: value });
   }
 
   render() {
@@ -604,16 +576,16 @@ class Sender extends React.Component<SenderProps, SenderState> {
             {QRCodeErrorCorrectionLevel.map((x, i) => <ToggleButton style={{ width: '51px'}} value={x}>{x}</ToggleButton> )}
           </ToggleButtonGroup>
           <div>
-            <div className={(this.state.selectedEncoding === 'Base45' && this.state.selectedQRCodeErrorCorrectionLevel === 'L') ? "qrcode-ec-label selected" : "qrcode-ec-label"}>{QRCodeVersions[this.state.selectedQRCodeVersion].alphaNumeric.L}</div>
-            <div className={(this.state.selectedEncoding === 'Base45' && this.state.selectedQRCodeErrorCorrectionLevel === 'M') ? "qrcode-ec-label selected" : "qrcode-ec-label"}>{QRCodeVersions[this.state.selectedQRCodeVersion].alphaNumeric.M}</div>
-            <div className={(this.state.selectedEncoding === 'Base45' && this.state.selectedQRCodeErrorCorrectionLevel === 'Q') ? "qrcode-ec-label selected" : "qrcode-ec-label"}>{QRCodeVersions[this.state.selectedQRCodeVersion].alphaNumeric.Q}</div>
-            <div className={(this.state.selectedEncoding === 'Base45' && this.state.selectedQRCodeErrorCorrectionLevel === 'H') ? "qrcode-ec-label selected" : "qrcode-ec-label"}>{QRCodeVersions[this.state.selectedQRCodeVersion].alphaNumeric.H}</div>
+            <div className={(this.state.selectedEncoding === DataEncodingType.base45 && this.state.selectedQRCodeErrorCorrectionLevel === 'L') ? "qrcode-ec-label selected" : "qrcode-ec-label"}>{QRCodeVersions[this.state.selectedQRCodeVersion].alphaNumeric.L}</div>
+            <div className={(this.state.selectedEncoding === DataEncodingType.base45 && this.state.selectedQRCodeErrorCorrectionLevel === 'M') ? "qrcode-ec-label selected" : "qrcode-ec-label"}>{QRCodeVersions[this.state.selectedQRCodeVersion].alphaNumeric.M}</div>
+            <div className={(this.state.selectedEncoding === DataEncodingType.base45 && this.state.selectedQRCodeErrorCorrectionLevel === 'Q') ? "qrcode-ec-label selected" : "qrcode-ec-label"}>{QRCodeVersions[this.state.selectedQRCodeVersion].alphaNumeric.Q}</div>
+            <div className={(this.state.selectedEncoding === DataEncodingType.base45 && this.state.selectedQRCodeErrorCorrectionLevel === 'H') ? "qrcode-ec-label selected" : "qrcode-ec-label"}>{QRCodeVersions[this.state.selectedQRCodeVersion].alphaNumeric.H}</div>
           </div>
           <div>
-            <div className={(this.state.selectedEncoding === 'Base64' && this.state.selectedQRCodeErrorCorrectionLevel === 'L') ? "qrcode-ec-label selected" : "qrcode-ec-label"}>{QRCodeVersions[this.state.selectedQRCodeVersion].binary.L}</div>
-            <div className={(this.state.selectedEncoding === 'Base64' && this.state.selectedQRCodeErrorCorrectionLevel === 'M') ? "qrcode-ec-label selected" : "qrcode-ec-label"}>{QRCodeVersions[this.state.selectedQRCodeVersion].binary.M}</div>
-            <div className={(this.state.selectedEncoding === 'Base64' && this.state.selectedQRCodeErrorCorrectionLevel === 'Q') ? "qrcode-ec-label selected" : "qrcode-ec-label"}>{QRCodeVersions[this.state.selectedQRCodeVersion].binary.Q}</div>
-            <div className={(this.state.selectedEncoding === 'Base64' && this.state.selectedQRCodeErrorCorrectionLevel === 'H') ? "qrcode-ec-label selected" : "qrcode-ec-label"}>{QRCodeVersions[this.state.selectedQRCodeVersion].binary.H}</div>
+            <div className={(this.state.selectedEncoding === DataEncodingType.base64 && this.state.selectedQRCodeErrorCorrectionLevel === 'L') ? "qrcode-ec-label selected" : "qrcode-ec-label"}>{QRCodeVersions[this.state.selectedQRCodeVersion].binary.L}</div>
+            <div className={(this.state.selectedEncoding === DataEncodingType.base64 && this.state.selectedQRCodeErrorCorrectionLevel === 'M') ? "qrcode-ec-label selected" : "qrcode-ec-label"}>{QRCodeVersions[this.state.selectedQRCodeVersion].binary.M}</div>
+            <div className={(this.state.selectedEncoding === DataEncodingType.base64 && this.state.selectedQRCodeErrorCorrectionLevel === 'Q') ? "qrcode-ec-label selected" : "qrcode-ec-label"}>{QRCodeVersions[this.state.selectedQRCodeVersion].binary.Q}</div>
+            <div className={(this.state.selectedEncoding === DataEncodingType.base64 && this.state.selectedQRCodeErrorCorrectionLevel === 'H') ? "qrcode-ec-label selected" : "qrcode-ec-label"}>{QRCodeVersions[this.state.selectedQRCodeVersion].binary.H}</div>
           </div>
         </Grid>
         <Grid item xs={12} sm={6} style={{marginTop: '10px'}}>

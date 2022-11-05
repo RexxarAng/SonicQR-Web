@@ -562,7 +562,7 @@ class Sender extends React.Component<SenderProps, SenderState> {
   }
 
   render() {
-    return <Container maxWidth="sm" style={{ paddingBottom: '75px' }}>
+    return <Container maxWidth="md" style={{ paddingBottom: '75px' }}>
       <h3>SonicQR Sender</h3>
 
       <h4>QR Code Version</h4>
@@ -570,7 +570,7 @@ class Sender extends React.Component<SenderProps, SenderState> {
         {QRCodeVersions.map((x, i) => <ToggleButton style={{ flex: '1 1 10%' }} value={i}>{x.label}</ToggleButton> )}
       </ToggleButtonGroup>
       <Grid container>
-        <Grid item xs={12} sm={6} style={{marginTop: '10px'}}>
+        <Grid item xs={12} sm={6} md={3} style={{marginTop: '10px'}}>
           <h4>QR Code Error Correction Level</h4>
           <ToggleButtonGroup size="small" value={this.state.selectedQRCodeErrorCorrectionLevel} exclusive onChange={this.onChangeSelectedQRCodeErrorCorrectionLevel}>
             {QRCodeErrorCorrectionLevel.map((x, i) => <ToggleButton style={{ width: '51px'}} value={x}>{x}</ToggleButton> )}
@@ -588,7 +588,7 @@ class Sender extends React.Component<SenderProps, SenderState> {
             <div className={(this.state.selectedEncoding === DataEncodingType.base64 && this.state.selectedQRCodeErrorCorrectionLevel === 'H') ? "qrcode-ec-label selected" : "qrcode-ec-label"}>{QRCodeVersions[this.state.selectedQRCodeVersion].binary.H}</div>
           </div>
         </Grid>
-        <Grid item xs={12} sm={6} style={{marginTop: '10px'}}>
+        <Grid item xs={12} sm={6} md={3} style={{marginTop: '10px'}}>
           <h4>File Encoding</h4>
           <ToggleButtonGroup size="small" value={this.state.selectedEncoding} exclusive onChange={this.onChangeSelectedEncoding}>
             <ToggleButton value="Base45"> Base45 </ToggleButton>
@@ -596,19 +596,22 @@ class Sender extends React.Component<SenderProps, SenderState> {
             <ToggleButton value="Base64"> Base64 </ToggleButton>
           </ToggleButtonGroup>
         </Grid>
+
+        <Grid item xs={12} sm={6} md={6} style={{marginTop: '10px'}}>
+          <input type="file" onChange={this.onFileChange} style={{ display: 'none' }} id="raised-button-file"/>
+          <label htmlFor="raised-button-file">
+            <Button variant="contained" color="primary" component="span">
+              Upload File
+            </Button>
+          </label>
+          <div style={{display: 'inline-block', paddingLeft: '20px', fontSize: '0.8em'}}>{this.state.selectedFile?.name}</div>
+          <div style={{display: 'inline-block', paddingLeft: '10px', fontSize: '0.6em'}}>{(this.state.selectedFile) ? (this.state.selectedFile.size/1024).toFixed(2) + ' KB' : ''}</div>
+        </Grid>
+
       </Grid>
       <br />
       
-      <input type="file" onChange={this.onFileChange} style={{ display: 'none' }} id="raised-button-file"/>
-      <label htmlFor="raised-button-file">
-        <Button variant="contained" color="primary" component="span">
-          Upload File
-        </Button>
-      </label>
-      <div style={{display: 'inline-block', paddingLeft: '20px', fontSize: '0.8em'}}>{this.state.selectedFile?.name}</div>
-      <div style={{display: 'inline-block', paddingLeft: '10px', fontSize: '0.6em'}}>{(this.state.selectedFile) ? (this.state.selectedFile.size/1024).toFixed(2) + ' KB' : ''}</div>
-      <br />
-      <br />
+      
       
       {this.state ? <Box>
         <Typography id="send-progress" gutterBottom>
@@ -623,9 +626,9 @@ class Sender extends React.Component<SenderProps, SenderState> {
           min={1}
           max={this.state.totalNumberOfPackets}
           valueLabelDisplay="auto"
-          style={{width: "74vmin"}}
+          style={{width: "100%"}}
         />
-        <Box alignItems="center" className='animate-left-right' style={{backgroundColor: 'white', padding: 10, width: "60vmin", height: "60vmin"}}>
+        <Box alignItems="center" className='animate-left-right' style={{backgroundColor: 'white', padding: 10, aspectRatio: '1', width: "100%"}}>
           { this.state.currentPacketData != null ? <QRCode value={this.state.currentPacketData} renderAs='svg' level="L" bgColor="#FFFFFFFF" style={{width: "100%", height: "100%"}} /> : null }
         </Box>
       </Box>: null}

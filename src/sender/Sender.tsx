@@ -554,15 +554,27 @@ class Sender extends React.Component<SenderProps, SenderState> {
     this.setState({ tick: value });
   }
 
+  debounceSliderTimeoutId: ReturnType<typeof setTimeout> | undefined;
+  onSliderChangeCurrentPacketNumber = (event: React.ChangeEvent<{}>, value: number | number[]) => {
+    if (typeof value !== 'number') return;
+
+    clearTimeout(this.debounceSliderTimeoutId);
+    this.debounceSliderTimeoutId = setTimeout(() => {
+      this.setState({ currentPacketNumber: value-1 });
+      setTimeout(() => this.goToCurrentDataPacket(), 50);
+    }, 10);
+  }
+
   render() {
     return <Container maxWidth="md" style={{ paddingBottom: '75px' }}>
       <h3>SonicQR Sender</h3>
 
-      <h4>QR Code Version</h4>
+      <h4>QR Code Version : v{QRCodeVersions[this.state.selectedQRCodeVersion].label} dimension:{QRCodeVersions[this.state.selectedQRCodeVersion].size}</h4>
       <ToggleButtonGroup size="small" value={this.state.selectedQRCodeVersion} exclusive onChange={this.onChangeSelectedQRCodeVersion} style={{display: 'flex', flexWrap: 'wrap'}}>
         {QRCodeVersions.map((x, i) => <ToggleButton style={{ flex: '1 1 10%' }} value={i}>{x.label}</ToggleButton> )}
       </ToggleButtonGroup>
-      <Grid container>
+
+      <Grid container style={{marginTop: '10px'}}>
         <Grid item xs={12} sm={6} md={3} style={{marginTop: '10px'}}>
           <h4>QR Code Error Correction Level</h4>
           <ToggleButtonGroup size="small" value={this.state.selectedQRCodeErrorCorrectionLevel} exclusive onChange={this.onChangeSelectedQRCodeErrorCorrectionLevel}>
@@ -581,6 +593,7 @@ class Sender extends React.Component<SenderProps, SenderState> {
             <div className={(this.state.selectedEncoding === DataEncodingType.base64 && this.state.selectedQRCodeErrorCorrectionLevel === 'H') ? "qrcode-ec-label selected" : "qrcode-ec-label"}>{QRCodeVersions[this.state.selectedQRCodeVersion].binary.H}</div>
           </div>
         </Grid>
+
         <Grid item xs={12} sm={6} md={3} style={{marginTop: '10px'}}>
           <h4>File Encoding</h4>
           <ToggleButtonGroup size="small" value={this.state.selectedEncoding} exclusive onChange={this.onChangeSelectedEncoding}>
@@ -591,6 +604,7 @@ class Sender extends React.Component<SenderProps, SenderState> {
         </Grid>
 
         <Grid item xs={12} sm={6} md={6} style={{marginTop: '10px'}}>
+          <h4>File for transfer</h4>
           <input type="file" onChange={this.onFileChange} style={{ display: 'none' }} id="raised-button-file"/>
           <label htmlFor="raised-button-file">
             <Button variant="contained" color="primary" component="span">
@@ -604,14 +618,13 @@ class Sender extends React.Component<SenderProps, SenderState> {
       </Grid>
       <br />
       
-      
-      
       {this.state ? <Box>
         <Typography id="send-progress" gutterBottom>
           Progress <span>{this.state.currentPacketNumber+1}</span>/<span>{this.state.totalNumberOfPackets}</span>
         </Typography>
         <Slider
           value={this.state.currentPacketNumber+1}
+          onChange={this.onSliderChangeCurrentPacketNumber}
           //getAriaValueText={(this.state.currentPacketNumber+1).toString()}
           aria-labelledby="send-progress"
           step={1}

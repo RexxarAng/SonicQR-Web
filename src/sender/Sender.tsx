@@ -98,6 +98,7 @@ type SenderState = {
 
   selectedFile?: File,
 
+  receiverAudioCooldown: number,
   tick: number,
   isAudioAckMode: boolean,
   selectedEncoding: DataEncodingType,
@@ -126,6 +127,7 @@ class Sender extends React.Component<SenderProps, SenderState> {
       currentPacketNumber: 0,
       totalNumberOfPackets: 0,
       transferState: SenderTransferState.PAUSED,
+      receiverAudioCooldown: RECEIVER_AUDIO_COOLDOWN,
       tick: 5,
       isAudioAckMode: true,
       selectedEncoding: DataEncodingType.base45,
@@ -422,7 +424,7 @@ class Sender extends React.Component<SenderProps, SenderState> {
 
   private constructHeaderPacket(): string {
     const file = this.state.selectedFile!;
-    return `!${this.state.dataPackets.length}|${file.name}|${file.type}|${file.size}|${this.state.selectedEncoding}|${this.state.digest}|${RECEIVER_AUDIO_COOLDOWN}`;
+    return `!${this.state.dataPackets.length}|${file.name}|${file.type}|${file.size}|${this.state.selectedEncoding}|${this.state.digest}|${this.state.receiverAudioCooldown}`;
   }
 
   private goToCurrentDataPacket() {
@@ -562,6 +564,11 @@ class Sender extends React.Component<SenderProps, SenderState> {
     }, 10);
   }
 
+  onChangeReceiverAudioCooldown = (event: React.MouseEvent<HTMLElement, MouseEvent>, value: any) => {
+    if (value == null) return;
+    this.setState({ receiverAudioCooldown: value });
+  }
+
   render() {
     return <Container maxWidth="md" style={{ paddingBottom: '75px' }}>
       <h3>SonicQR Sender</h3>
@@ -571,8 +578,8 @@ class Sender extends React.Component<SenderProps, SenderState> {
         {QRCodeVersions.map((x, i) => <ToggleButton style={{ flex: '1 1 10%' }} value={i}>{x.label}</ToggleButton> )}
       </ToggleButtonGroup>
 
-      <Grid container style={{marginTop: '10px'}}>
-        <Grid item xs={12} sm={6} md={3} style={{marginTop: '10px'}}>
+      <Grid container style={{marginTop: 10}}>
+        <Grid item xs={12} sm={6} md={4} style={{marginTop: 20}}>
           <h4>QR Code Error Correction Level</h4>
           <ToggleButtonGroup size="small" value={this.state.selectedQRCodeErrorCorrectionLevel} exclusive onChange={this.onChangeSelectedQRCodeErrorCorrectionLevel}>
             {QRCodeErrorCorrectionLevel.map((x, i) => <ToggleButton style={{ width: '51px'}} value={x}>{x}</ToggleButton> )}
@@ -591,7 +598,7 @@ class Sender extends React.Component<SenderProps, SenderState> {
           </div>
         </Grid>
 
-        <Grid item xs={12} sm={6} md={3} style={{marginTop: '10px'}}>
+        <Grid item xs={12} sm={6} md={4} style={{marginTop: 20}}>
           <h4>File Encoding</h4>
           <ToggleButtonGroup size="small" value={this.state.selectedEncoding} exclusive onChange={this.onChangeSelectedEncoding}>
             <ToggleButton value="Base45"> Base45 </ToggleButton>
@@ -600,7 +607,21 @@ class Sender extends React.Component<SenderProps, SenderState> {
           </ToggleButtonGroup>
         </Grid>
 
-        <Grid item xs={12} sm={6} md={6} style={{marginTop: '10px'}}>
+        <Grid item xs={12} sm={6} md={4} style={{marginTop: 20}}>
+          <h4>Receiver Audio Cool Down (ms) </h4>
+          <ToggleButtonGroup size="small" value={this.state.receiverAudioCooldown} exclusive onChange={this.onChangeReceiverAudioCooldown}>
+            <ToggleButton value={30}> 30 </ToggleButton>
+            <ToggleButton value={40}> 40 </ToggleButton>
+            <ToggleButton value={50}> 50 </ToggleButton>
+            <ToggleButton value={60}> 60 </ToggleButton>
+            <ToggleButton value={70}> 70 </ToggleButton>
+            <ToggleButton value={80}> 80 </ToggleButton>
+            <ToggleButton value={90}> 90 </ToggleButton>
+            <ToggleButton value={100}> 100 </ToggleButton>
+          </ToggleButtonGroup>
+        </Grid>
+
+        <Grid item xs={12} sm={6} style={{marginTop: 20}}>
           <h4>File for transfer</h4>
           <input type="file" onChange={this.onFileChange} style={{ display: 'none' }} id="raised-button-file"/>
           <label htmlFor="raised-button-file">
@@ -613,9 +634,8 @@ class Sender extends React.Component<SenderProps, SenderState> {
         </Grid>
 
       </Grid>
-      <br />
       
-      {this.state ? <Box>
+      {this.state ? <Box style={{marginTop: 20}}>
         <Typography id="send-progress" gutterBottom>
           Progress <span>{this.state.currentPacketNumber+1}</span>/<span>{this.state.totalNumberOfPackets}</span>
         </Typography>
@@ -644,14 +664,14 @@ class Sender extends React.Component<SenderProps, SenderState> {
           }
         </Box>
       </Box>: null}
-      <Button variant="contained" color="primary" onClick={this.sendHeader}>Header</Button>
+      <Button variant="contained" color="primary" onClick={this.sendHeader} style={{marginRight: 10}}>Header</Button>
       {this.state.transferState == SenderTransferState.SENDING_DATA_PACKETS ? 
       <Button variant="contained" color="secondary" onClick={this.stop}>Stop</Button>:
       <Button variant="contained" color="primary" onClick={this.sendData}>Start</Button>
       }
 
       <FormControlLabel
-        style={{marginLeft: '10px'}}
+        style={{marginLeft: 10}}
         control={
         <Switch
           checked={this.state.isAudioAckMode}
@@ -659,16 +679,18 @@ class Sender extends React.Component<SenderProps, SenderState> {
           name="Audio Ack Mode"/>}
         label="Require Audio Acknowledge" />
 
-      <Typography id="discrete-slider" gutterBottom>
-        Tick {this.state.tick} ms
-      </Typography>
-      <Slider
-        value={this.state.tick}
-        onChange={this.onChangeTick}
-        step={5}
-        min={5}
-        max={500}
-      />
+      <Grid style={{marginTop: 10}}>
+        <Typography id="discrete-slider" gutterBottom>
+          Tick {this.state.tick} ms
+        </Typography>
+        <Slider
+          value={this.state.tick}
+          onChange={this.onChangeTick}
+          step={5}
+          min={5}
+          max={500}
+        />
+      </Grid>
     </Container>;
   }
 }

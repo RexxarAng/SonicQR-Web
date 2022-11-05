@@ -58,7 +58,7 @@ const QRCodeVersions = [
   { label: '40', size: '177x177', alphaNumeric: { L: 4296, M: 3391, Q: 2420, H:1663 }, binary: { L: 2953, M: 2331, Q: 1663, H: 1273 } },
 ]
 
-const DATA_FRAME_OVERHEAD_CHARACTERS = 10;
+const DATA_FRAME_OVERHEAD_CHARACTERS = 11;
 const BEEP_COOLDOWN_INTERVAL = 10;
 const EACH_PACKET_SIZE = 1600;
 const RECEIVER_AUDIO_COOLDOWN = 70;

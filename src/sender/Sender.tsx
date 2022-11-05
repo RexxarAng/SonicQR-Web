@@ -1,7 +1,7 @@
 import React, { ChangeEvent } from 'react';
 import './Sender.css';
 
-import { Button, Container, Box, Slider, Typography, Grid, Paper, Switch, FormControlLabel} from '@material-ui/core';
+import { Button, Container, Box, Slider, Typography, Grid, Switch, FormControlLabel} from '@material-ui/core';
 import ToggleButton from '@material-ui/lab/ToggleButton';
 import ToggleButtonGroup from '@material-ui/lab/ToggleButtonGroup';
 import QRCode from 'qrcode.react';
@@ -311,10 +311,7 @@ class Sender extends React.Component<SenderProps, SenderState> {
               }
           }
         }
-
         this.redrawCounter --;
-
-        console.log('beepCoolDownRate :' + this.beepCoolDownRate)
     }
   }
 
@@ -326,7 +323,7 @@ class Sender extends React.Component<SenderProps, SenderState> {
     this.analyser.getFloatTimeDomainData(buffer);
     let autoCorrelateValue = this.autoCorrelate(buffer, this.audioContext.sampleRate);
 
-    if (autoCorrelateValue > -1) console.log('autoCorrelateValue', autoCorrelateValue);
+    // if (autoCorrelateValue > -1) console.log('autoCorrelateValue', autoCorrelateValue);
     
     if (
       autoCorrelateValue >= BEEP_FORWARD_CORRELATE_MIN &&

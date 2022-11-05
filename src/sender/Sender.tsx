@@ -588,7 +588,7 @@ class Sender extends React.Component<SenderProps, SenderState> {
 
   render() {
     return <Container maxWidth="sm" style={{ paddingBottom: '75px' }}>
-      <h3>Send</h3>
+      <h3>SonicQR Sender</h3>
 
       <h4>QR Code Version</h4>
       <ToggleButtonGroup size="small" value={this.state.selectedQRCodeVersion} exclusive onChange={this.onChangeSelectedQRCodeVersion} style={{display: 'flex', flexWrap: 'wrap'}}>

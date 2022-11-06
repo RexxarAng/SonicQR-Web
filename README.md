@@ -1,7 +1,7 @@
 # SonicQR-Web
 
 ## Table of contents
-* [Project Description](#Project Decription)
+* [Project Description](#Project-Decription)
 * [Setup](#Setup)
 * [Technologies](#Technologies)
 

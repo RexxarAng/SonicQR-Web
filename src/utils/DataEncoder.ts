@@ -18,26 +18,18 @@ export class SonicQrDataEncoder implements DataEncoder {
   encode(file: File, encodingType = DataEncodingType.base45): Promise<EncodedData> {
 
     const reader = new FileReader();
-
-    if (encodingType === DataEncodingType.base45) {
-      reader.readAsArrayBuffer(file);
-    } else {
-      reader.readAsDataURL(file);
-    }
-
+    reader.readAsArrayBuffer(file);
     return new Promise((resolve, reject) => {
       reader.onload = async () => { 
-        let encodedDataString = '';
+        if (!(reader.result instanceof ArrayBuffer)) return;
+        const digest = await this.hashAsync(reader.result);
+        const encodedDataString = (encodingType === DataEncodingType.base45)
+          ? base45encode(new Uint8Array(reader.result))
+          : btoa(String.fromCharCode(...new Uint8Array(reader.result)));
         
-        if (reader.result instanceof ArrayBuffer) {
-          encodedDataString = base45encode(new Uint8Array(reader.result));
-        }
-        else {
-          encodedDataString = reader.result as string;
-        }
+        console.log('digest', digest);
         console.log('encodedDataString', encodedDataString);
-
-        const digest = await this.hashAsync(encodedDataString);
+        
         resolve({ encodedData: encodedDataString, digest });
       };
       reader.onerror = (error) => reject(error);
